@@ -13,7 +13,7 @@ from loguru import logger
 
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.api.v1 import auth, students, teachers, attendance, fees, hostel, transport, lms, notifications, reports, subscriptions, tenants
+from app.api.v1 import auth, students, teachers, attendance, fees, hostel, transport, lms, notifications, reports, subscriptions, tenants, ai_assistant, advanced_features
 
 
 @asynccontextmanager
@@ -91,6 +91,8 @@ app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
 app.include_router(subscriptions.router, prefix="/api/v1/subscriptions", tags=["Subscriptions"])
 app.include_router(tenants.router, prefix="/api/v1/tenants", tags=["Tenants"])
+app.include_router(ai_assistant.router, prefix="/api/v1/ai", tags=["AI Assistant"])
+app.include_router(advanced_features.router, prefix="/api/v1/advanced", tags=["Advanced Features"])
 
 
 @app.get("/")

@@ -65,3 +65,43 @@ sentry-sdk[fastapi]==1.38.0
 
 # CORS
 fastapi-cors==0.0.6
+
+# AI and Machine Learning
+aiohttp==3.9.1
+transformers==4.36.2
+torch==2.1.2
+numpy==1.24.3
+scikit-learn==1.3.2
+
+# Advanced Features
+# Blockchain (simulated)
+web3==6.11.3
+eth-account==0.9.0
+
+# AR/VR (simulated)
+opencv-python==4.8.1.78
+mediapipe==0.10.7
+
+# IoT and Sensors
+paho-mqtt==1.6.1
+adafruit-circuitpython-busdevice==5.2.6
+
+# Voice Processing
+speechrecognition==3.10.0
+pyttsx3==2.90
+
+# Biometric Processing
+face-recognition==1.3.0
+opencv-contrib-python==4.8.1.78
+
+# Gamification
+pygame==2.5.2
+
+# Advanced Analytics
+pandas==2.1.4
+matplotlib==3.8.2
+seaborn==0.13.0
+plotly==5.17.0
+
+# Smart Scheduling
+schedule==1.2.0
