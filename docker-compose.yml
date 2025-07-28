@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # PostgreSQL Database
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     container_name: aiqube_postgres
     environment:
       POSTGRES_DB: aiqube_sms
@@ -18,10 +18,15 @@ services:
     networks:
       - aiqube_network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiqube -d aiqube_sms"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Redis for caching and background tasks
   redis:
-    image: redis:7-alpine
+    image: redis:7.2-alpine
     container_name: aiqube_redis
     ports:
       - "6379:6379"
@@ -30,6 +35,11 @@ services:
     networks:
       - aiqube_network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # FastAPI Application
   app:
@@ -49,18 +59,49 @@ services:
       - TWILIO_ACCOUNT_SID=
       - TWILIO_AUTH_TOKEN=
       - TWILIO_PHONE_NUMBER=
+      - HUGGINGFACE_API_KEY=
+      - AI_ENABLED=true
+      - AI_RATE_LIMIT=60
     ports:
       - "8000:8000"
     volumes:
       - ./uploads:/app/uploads
       - ./logs:/app/logs
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - aiqube_network
     restart: unless-stopped
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Modern Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: aiqube_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8000/api/v1
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - aiqube_network
+    restart: unless-stopped
+    command: npm run dev
 
   # Celery Worker for background tasks
   celery_worker:
@@ -73,12 +114,16 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=your-secret-key-change-in-production
       - DEBUG=false
+      - HUGGINGFACE_API_KEY=
+      - AI_ENABLED=true
     volumes:
       - ./uploads:/app/uploads
       - ./logs:/app/logs
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - aiqube_network
     restart: unless-stopped
@@ -99,8 +144,10 @@ services:
       - ./uploads:/app/uploads
       - ./logs:/app/logs
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - aiqube_network
     restart: unless-stopped
@@ -108,7 +155,7 @@ services:
 
   # Nginx Reverse Proxy (Optional)
   nginx:
-    image: nginx:alpine
+    image: nginx:1.25-alpine
     container_name: aiqube_nginx
     ports:
       - "80:80"
@@ -118,14 +165,48 @@ services:
       - ./ssl:/etc/nginx/ssl
     depends_on:
       - app
+      - frontend
     networks:
       - aiqube_network
     restart: unless-stopped
+
+  # Monitoring with Prometheus (Optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: aiqube_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - aiqube_network
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+  # Grafana for visualization (Optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: aiqube_grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - aiqube_network
+    restart: unless-stopped
+    profiles: ["monitoring"]
 
 volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
     driver: local
 
 networks:
